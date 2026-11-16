@@ -1,4 +1,27 @@
 'use strict';
+/* =====================================================================
+   SUPABASE · PEGA AQUÍ TUS DATOS (Project Settings > API)
+   ===================================================================== */
+const SUPABASE_URL = 'https://ptjfnmwwpwartrzwywba.supabase.co';   // <- Project URL
+const SUPABASE_KEY = 'sb_publishable_9mXwtJyYj5kV383BcPcUKA_cueakZqH';          // <- anon / publishable key (NUNCA la service_role)
+const SB_ON = true;
+const db = (tabla, filas, qs = '', prefer = 'return=minimal') => SB_ON
+  ? fetch(`${SUPABASE_URL}/rest/v1/${tabla}${qs}`, { method: 'POST', headers: { apikey: SUPABASE_KEY, ...(SUPABASE_KEY.startsWith('eyJ') ? { Authorization: 'Bearer ' + SUPABASE_KEY } : {}), 'Content-Type': 'application/json', Prefer: prefer }, body: JSON.stringify(filas) })
+      .then(r => { if (!r.ok) r.text().then(t => console.warn('Supabase', tabla, t)); return r.ok; }).catch(e => (console.warn(e), false))
+  : Promise.resolve(false);
+const guardarReserva = async (r, codigo) => {
+  const dt = r.data || {}, uid = crypto.randomUUID();
+  const ok = await db('reservas', { id: uid, codigo, mesa_numero: r.table, sillas: (r.chairs || []).map(i => i + 1), personas: r.cap, fecha: r.date, hora: r.time, nombre: dt.n, dni: dt.d, celular: dt.t, telefono_adicional: dt.t2 || null, correo: dt.e, motivo: dt.o, notas: dt.m || null, total_decoracion: decoTot(r) });
+  if (!ok) return;
+  const filas = Object.keys(DECO).map((k, ti) => { const i = (r.deco || {})[k] || 0; return i ? { reserva_id: uid, decoracion_id: ti * 3 + i, precio: DECO[k][1][i][1] } : null; }).filter(Boolean);
+  if (filas.length) db('reserva_decoraciones', filas);
+};
+const guardarPedido = async o => {
+  const uid = crypto.randomUUID(), d = o.d || {};
+  if (!(await db('pedidos', { id: uid, codigo: o.id, nombre: d.n, correo: d.e, celular: d.t, direccion: d.a, zona: d.z, referencias: d.r || null, metodo_pago: o.pm, total: o.total }))) return;
+  db('pedido_items', o.items.map(x => ({ pedido_id: uid, item_id: x.id, cantidad: x.q, precio: x.p })));
+};
+
 /* ========= Utilidades ========= */
 const $ = (s, r = document) => r.querySelector(s);
 const S = {
@@ -44,6 +67,9 @@ const D = [
   { id: 17, n: 'Menú Ejecutivo', c: 'especiales', p: 35, i: 'menu-ejecutivo', d: 'Entrada, plato criollo del día, postre y refresco.' },
   { id: 18, n: 'Menú Parrillero', c: 'especiales', p: 85, i: 'menu-parrillero', d: 'Anticuchos, lomo al jugo, papas doradas y dos pisco sour.' }
 ];
+/* Precios flash: % de descuento por id de plato (borra una línea para quitar la oferta) */
+const FL = { 7: 20, 1: 15, 12: 25, 16: 10 };
+D.forEach(x => { if (FL[x.id]) { x.p0 = x.p; x.p = +(x.p * (1 - FL[x.id] / 100)).toFixed(2); } });
 const byId = id => D.find(x => x.id == id);
 const PM = { card: 'Tarjeta crédito / débito', yape: 'Yape / Plin', transfer: 'Transferencia bancaria', cash: 'Pago contra entrega' };
 const HORAS = { Almuerzo: ['12:00 p. m.', '12:30 p. m.', '1:00 p. m.', '1:30 p. m.', '2:00 p. m.', '2:30 p. m.', '3:00 p. m.', '3:30 p. m.'], Cena: ['6:00 p. m.', '6:30 p. m.', '7:00 p. m.', '7:30 p. m.', '8:00 p. m.', '8:30 p. m.', '9:00 p. m.', '9:30 p. m.'] };
@@ -69,7 +95,7 @@ const im = (i, a) => `<span class="im"><img src="img/${i}.jpg" alt="${a}" loadin
 const stepper = (l, c) => `<ol class="steps">${l.map((x, i) => `<li class="${i < c ? 'done' : i === c ? 'on' : ''}"><b>${i < c ? ic.check : i + 1}</b><span>${x}</span></li>`).join('')}</ol>`;
 const STEPS_C = ['Carrito', 'Datos de entrega', 'Pago', 'Confirmación'];
 const STEPS_R = ['Mesa y sillas', 'Fecha y hora', 'Decoración y datos', 'Confirmación'];
-const pc = d => `<article class="pc">${im(d.i, d.n)}<h4>${d.n}</h4><p class="pr">${money(d.p)}</p><button class="btn ghost sm" data-add="${d.id}">Agregar</button></article>`;
+const pc = d => `<article class="pc">${d.p0 ? `<b class="off">-${FL[d.id]}%</b>` : ''}${im(d.i, d.n)}<h4>${d.n}</h4><p class="pr">${money(d.p)}${d.p0 ? ` <s class="old">${money(d.p0)}</s>` : ''}</p><button class="btn ghost sm" data-add="${d.id}">Agregar</button></article>`;
 const qty = id => `<span class="qty"><button data-dec="${id}" aria-label="Quitar">−</button><i>${cart()[id]}</i><button data-inc="${id}" aria-label="Agregar">+</button></span>`;
 const sumBox = (its, tot) => `<aside class="box sum"><h3>Resumen del pedido</h3>${its.map(x => `<div class="li">${im(x.i, x.n)}<div><b>${x.n}</b><small>${x.q} unidad${x.q > 1 ? 'es' : ''}</small></div><span>${money(x.p * x.q)}</span></div>`).join('')}
   <div class="tr"><span>Subtotal</span><span>${money(tot)}</span></div><div class="tr"><span>Entrega local</span><span>Sin cargo adicional</span></div>
@@ -85,20 +111,53 @@ const saveR = o => S.set('res', { ...R(), ...o });
 const V = {};
 const A = {}; // se ejecutan después de pintar la vista
 
+/* ---- Inicio dinámico ---- */
+const HERO = [
+  { id: 16, e: '— El arte de compartir', t: 'Sabor, Cultura y Tradición Peruana', p: 'Comida criolla, cocteles y mucho más.' },
+  { id: 12, e: '— Brindemos', t: 'Un brindis por cada encuentro', p: 'Pisco sour, maracuyá y cocteles de la casa.' },
+  { id: 1, e: '— Cocina al momento', t: 'Criollo de verdad, al wok y al fuego', p: 'Lomo saltado, ají de gallina y seco de res.' },
+  { id: 18, e: '— Para compartir', t: 'Mesas llenas, buenos momentos', p: 'Menús especiales para toda la familia.' },
+  { id: 15, e: '— Dulce final', t: 'Cada festejo merece un postre', p: 'Suspiro limeño, mazamorra morada y más.' }
+];
+let heroT, railT, cdT;
+const sp = d => `<article class="dc">${im(d.i, d.n)}<div><h4>${d.n}</h4><p>${d.d}</p><div class="row"><b>${money(d.p)}</b><button class="btn ghost sm" data-add="${d.id}">+ Agregar</button></div></div></article>`;
+
 V.inicio = () => {
-  const rel = [9, 11, 5, 13].map(id => pc(byId(id))).join(''), mas = [10, 8, 14, 15].map(id => pc(byId(id))).join('');
-  return `<section class="hero"><div><div class="eyebrow">— El arte de compartir</div><h1>Sabor, Cultura y Tradición Peruana</h1><p>Comida criolla, cocteles y mucho más.</p>
-    <a class="btn" href="#/servicios">RESERVA TU MESA ${ic.arrow}</a><div class="hs"><span><b>12:00</b>Abierto desde</span><span><b>26</b>Mesas</span><span><b>3</b>Zonas</span></div><q>Cada encuentro merece un festejo.</q></div>
-    <div class="im">${im('hero', 'Salón de Festejo').replace('class="im"', 'class="im" style="position:absolute;inset:0"')}<div class="tag"><b>Un lugar para sentirte en casa.</b><small>COCINA PERUANA · CAFÉ · BUENOS MOMENTOS</small></div></div></section>
-  <div class="wrap sec"><div class="eyebrow">Sabores para descubrir</div><h2>Ofertas especiales y recomendaciones</h2><p class="muted">Una selección de la casa para disfrutar de nuestra cocina y encontrar nuevos favoritos.</p>
-    <div class="feat">${im('ofertas', 'Plato de la casa')}<div><div class="eyebrow">La recomendación de Festejo</div><h3>El gusto de compartir algo especial.</h3><p class="muted" style="margin-bottom:18px">Platos criollos, un buen brindis y un dulce final. Explora esta selección editorial, con los precios de nuestra carta.</p><a class="btn" href="#/carta">Explorar el menú ${ic.arrow}</a></div></div>
-    <div class="cols"><div><h3>Productos relacionados</h3><small class="muted">Aunque no lo creas, también te pueden interesar.</small><div class="grid4" style="grid-template-columns:repeat(2,1fr)">${rel}</div></div>
-    <div><h3>También te puede gustar</h3><small class="muted">Otros clientes también compraron.</small><div class="grid4" style="grid-template-columns:repeat(2,1fr)">${mas}</div></div></div></div>
-  <div class="wrap sec" style="padding-top:0"><div class="eyebrow">Por qué Festejo</div><h2>Hecho para compartir</h2>
+  const h0 = HERO[0], d0 = byId(h0.id), flash = Object.keys(FL).map(id => pc(byId(id))).join(''), top = [7, 1, 10, 12, 9, 14, 11, 15].map(id => pc(byId(id))).join('');
+  return `<section class="hero"><div><div id="hx"><div class="eyebrow" id="hE">${h0.e}</div><h1 id="hT">${h0.t}</h1><p id="hP">${h0.p}</p></div>
+    <div class="acts" style="max-width:420px"><a class="btn" href="#/servicios">RESERVA TU MESA ${ic.arrow}</a><a class="btn ghost" href="#/carta">Ver el menú</a></div>
+    <div class="hs"><span><b>12:00</b>Abierto desde</span><span><b>26</b>Mesas</span><span><b>3</b>Zonas</span></div></div>
+    <div class="im">${HERO.map((h, i) => `<img class="sl ${i ? '' : 'on'}" data-i="${i}" src="img/${byId(h.id).i}.jpg" alt="${byId(h.id).n}" onerror="this.remove()">`).join('')}
+      <div class="tag"><small>PLATO DESTACADO</small><b id="hN">${d0.n}</b><small id="hS">${money(d0.p)}</small></div><div class="dots">${HERO.map((_, i) => `<button class="dot ${i ? '' : 'on'}" data-i="${i}" aria-label="Ver ${i + 1}"></button>`).join('')}</div></div></section>
+  <div class="wrap sec rv"><div class="row flashh"><div><div class="eyebrow">⚡ Precios flash</div><h2>Ofertas que se van volando</h2><p class="muted">Precios especiales solo por hoy en platos seleccionados.</p></div><div class="cdw"><small>Termina en</small><b id="cd">--:--:--</b></div></div><div class="rail">${flash}</div></div>
+  <div class="wrap sec rv" style="padding-top:8px"><div class="eyebrow">Para compartir</div><h2>Menús especiales</h2><p class="muted">Combos pensados para la familia, los amigos o un almuerzo rápido.</p><div class="three">${[16, 17, 18].map(id => sp(byId(id))).join('')}</div></div>
+  <div class="wrap sec rv" style="padding-top:8px"><div class="eyebrow">Los favoritos</div><h2>Lo más pedido de la casa</h2><div class="rail">${top}</div></div>
+  <div class="wrap rv" style="padding-bottom:48px"><div class="band"><div><small>Hazla única</small><h3>Decora tu mesa</h3><p>Flores, velas y adornos para cumpleaños, aniversarios y cenas especiales, desde S/ 20.</p></div><div><small>Elige tus sillas</small><p>Mira el salón desde arriba y escoge tu mesa y tus sillas.</p></div><div><a class="btn" href="#/servicios">Reservar mesa</a></div></div></div>
+  <div class="mq rv" aria-hidden="true"><div class="mqi">${[...D, ...D].map(d => im(d.i, d.n)).join('')}</div></div>
+  <div class="wrap sec rv"><div class="eyebrow">Por qué Festejo</div><h2>Hecho para compartir</h2>
     <div class="three"><div class="box"><span class="num">1</span><h4>Cocina de tradición</h4><p class="muted">Recetas criollas preparadas al momento, como en casa.</p></div>
-    <div class="box"><span class="num">2</span><h4>Mesas para cada ocasión</h4><p class="muted">Zona principal, terraza y bar: elige tu mesa en el plano.</p></div>
+    <div class="box"><span class="num">2</span><h4>Mesas para cada ocasión</h4><p class="muted">Zona principal, terraza y bar: elige tu mesa y tus sillas.</p></div>
     <div class="box"><span class="num">3</span><h4>Pide o reserva en línea</h4><p class="muted">Haz tu pedido con entrega local o separa tu mesa en minutos.</p></div></div></div>
-  <div class="wrap" style="padding-bottom:56px"><div class="band"><div><small>Visítanos</small><h3>Av. Londres · San Carlos, Huancayo</h3></div><div><small>Horario</small><p>Todos los días<br>12:00 p. m. – 10:00 p. m.</p></div><div><a class="btn" href="#/servicios">Reservar mesa</a> <a class="btn ghost" href="#/contacto">Contacto</a></div></div></div>`;
+  <div class="wrap rv" style="padding-bottom:56px"><div class="band"><div><small>Visítanos</small><h3>Av. Londres · San Carlos, Huancayo</h3></div><div><small>Horario</small><p>Todos los días<br>12:00 p. m. – 10:00 p. m.</p></div><div><a class="btn" href="#/servicios">Reservar mesa</a> <a class="btn ghost" href="#/contacto">Contacto</a></div></div></div>`;
+};
+A.inicio = () => {
+  let k = 0; const sl = [...document.querySelectorAll('.sl')], dots = [...document.querySelectorAll('.dot')];
+  const show = n => {
+    k = n; sl.forEach(x => x.classList.toggle('on', +x.dataset.i === n)); dots.forEach((x, i) => x.classList.toggle('on', i === n));
+    const h = HERO[n], d = byId(h.id); $('#hx').classList.add('fo');
+    setTimeout(() => { $('#hE').textContent = h.e; $('#hT').textContent = h.t; $('#hP').textContent = h.p; $('#hN').textContent = d.n; $('#hS').textContent = money(d.p); $('#hx').classList.remove('fo'); }, 450);
+  };
+  const restart = () => { clearInterval(heroT); heroT = setInterval(() => show((k + 1) % HERO.length), 18000); };
+  dots.forEach((x, i) => x.onclick = () => { show(i); restart(); }); restart();
+  clearInterval(railT);
+  railT = setInterval(() => document.querySelectorAll('.rail').forEach(r => {
+    const c = r.firstElementChild; if (!c || r.matches(':hover')) return;
+    r.scrollLeft + r.clientWidth >= r.scrollWidth - 4 ? r.scrollTo({ left: 0, behavior: 'smooth' }) : r.scrollBy({ left: c.offsetWidth + 14, behavior: 'smooth' });
+  }), 3500);
+  const tick = () => { const e = $('#cd'); if (!e) return; const n = new Date(), m = new Date(n); m.setHours(24, 0, 0, 0); const s = Math.floor((m - n) / 1000), p = x => String(x).padStart(2, '0'); e.textContent = `${p(Math.floor(s / 3600))}:${p(Math.floor(s % 3600 / 60))}:${p(s % 60)}`; };
+  tick(); clearInterval(cdT); cdT = setInterval(tick, 1000);
+  const io = new IntersectionObserver(es => es.forEach(e => { if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); } }), { threshold: .12 });
+  document.querySelectorAll('.rv').forEach(x => io.observe(x));
 };
 
 V.nosotros = () => `${head('Nuestra historia', 'Nosotros', 'Un café y restaurante peruano en el corazón de Huancayo.')}<div class="wrap page">
@@ -117,7 +176,7 @@ A.contacto = () => $('#fc').addEventListener('submit', e => {
   if (f.n.value.trim().length < 3) return $('#ferr').textContent = 'Escribe tu nombre.';
   if (!/^\S+@\S+\.\S+$/.test(f.e.value)) return $('#ferr').textContent = 'Escribe un correo válido.';
   if (f.m.value.trim().length < 10) return $('#ferr').textContent = 'El mensaje es muy corto.';
-  f.reset(); $('#ferr').textContent = ''; toast('Mensaje enviado. ¡Gracias por escribirnos!');
+  db('mensajes_contacto', { nombre: f.n.value.trim(), correo: f.e.value.trim(), asunto: f.a.value, mensaje: f.m.value.trim() }); f.reset(); $('#ferr').textContent = ''; toast('Mensaje enviado. ¡Gracias por escribirnos!');
 });
 
 /* ---- Carta ---- */
@@ -125,7 +184,7 @@ V.carta = () => `<div class="wrap page"><div class="ph chead" style="padding-bot
   <label class="search">${ic.search}<input id="q" placeholder="Buscar un plato" value="${cq}" autocomplete="off"></label></div><div id="cbody"></div></div>`;
 function cartaBody() {
   const u = S.get('user'), n = cnt(), list = D.filter(d => (cq ? d.n.toLowerCase().includes(cq.toLowerCase()) : d.c === ccat));
-  const card = d => `<article class="dc">${im(d.i, d.n)}<div><h4>${d.n}</h4><p>${d.d}</p><div class="row"><b>${money(d.p)}</b>${cart()[d.id] ? qty(d.id) : `<button class="btn ghost sm" data-add="${d.id}">+ Agregar</button>`}</div></div></article>`;
+  const card = d => `<article class="dc">${im(d.i, d.n)}<div><h4>${d.n}</h4><p>${d.d}</p><div class="row"><b>${money(d.p)}${d.p0 ? ` <s class="old">${money(d.p0)}</s>` : ''}</b>${cart()[d.id] ? qty(d.id) : `<button class="btn ghost sm" data-add="${d.id}">+ Agregar</button>`}</div></div></article>`;
   const panel = u && n ? `<aside class="box mini"><h3>Tu Carrito <span class="pill">${n} producto${n > 1 ? 's' : ''}</span></h3>${items().map(x => `<div class="mi"><b>${x.n}</b><b>${money(x.p * x.q)}</b><small>${money(x.p)} por unidad</small>${qty(x.id)}<button class="trash" data-del="${x.id}" aria-label="Eliminar">${ic.trash}</button></div>`).join('')}
     <div class="tr big"><span>Total</span><b>${money(total())}</b></div><a class="btn block" href="#/carrito">Finalizar compra ${ic.arrow}</a></aside>` : '';
   return `<div class="carta ${panel ? 'cp' : ''}"><div class="side"><small>El menú</small>${Object.entries(CATS).map(([k, t]) => `<button class="${!cq && ccat === k ? 'on' : ''}" data-act="cat:${k}">${t}</button>`).join('')}<q>Tradición que se sirve con cariño.</q></div>
@@ -175,7 +234,7 @@ V.procesando = () => wait('', 'Estamos revisando tu pago', 'Procesando tu pago�
   `<div class="eyebrow">Pago pendiente</div><h2>${money(total())}</h2><div class="det"><div class="tr"><span>Método seleccionado</span><b>${PM[pm]}</b></div><div class="tr"><span>Pedido</span><b>${cnt()} unidad${cnt() > 1 ? 'es' : ''}</b></div></div><small class="muted">IGV incluido · Entrega sin cargo adicional</small>`, 'No cierres esta pantalla ni repitas el pago.');
 A.procesando = () => { timer = setTimeout(() => {
   const o = { id: code('FP'), items: items(), total: total(), pm: PM[pm], d: S.get('delivery', {}) };
-  S.set('order', o); S.set('cart', {}); go('confirmado'); }, 2800); };
+  S.set('order', o); guardarPedido(o); S.set('cart', {}); go('confirmado'); }, 2800); };
 
 V.confirmado = () => { const o = S.get('order'); return `${head('Gracias por elegir Festejo', '¡Tu pedido está confirmado!', 'Tu pago se realizó correctamente. Nuestra cocina recibió tu pedido.')}<div class="wrap page">${stepper(STEPS_C, 3).replace(/class="on"/, 'class="done"')}<div class="lay"><div class="box"><div class="row" style="justify-content:flex-start;gap:18px"><div class="big-ic ok">${ic.check}</div><div><div class="eyebrow">Pedido #${o.id}</div><h2 style="font-size:34px">El sabor de casa, en camino a tu mesa.</h2></div></div>
   <div class="det"><div class="tr"><span>Total pagado</span><b>${money(o.total)} · IGV incluido</b></div><div class="tr"><span>Método de pago</span><b>${o.pm}</b></div><div class="tr"><span>Entrega</span><b>${o.d.a || 'Huancayo'} · Sin cargo adicional</b></div></div>
@@ -250,7 +309,7 @@ A.decoracion = () => $('#fd').addEventListener('submit', e => {
 
 V['procesando-reserva'] = () => { const r = R(); return wait('', 'Estamos preparando tu encuentro', 'Procesando tu reserva…', 'Por favor, espera un momento mientras revisamos tu selección. Tu reserva todavía no está confirmada.',
   `<div class="eyebrow">Solicitud pendiente</div><div class="det">${resSum(r, ZDEF[r.zone].n)}</div>`, 'Mantén esta pantalla abierta y no envíes otra solicitud.'); };
-A['procesando-reserva'] = () => { timer = setTimeout(() => { const r = R(); S.set('lastRes', { ...r, id: code('FT'), zn: ZDEF[r.zone].n }); S.del('res'); go('reserva-ok'); }, 2800); };
+A['procesando-reserva'] = () => { timer = setTimeout(() => { const r = R(); const lr = { ...r, id: code('FT'), zn: ZDEF[r.zone].n }; S.set('lastRes', lr); guardarReserva(r, lr.id); S.del('res'); go('reserva-ok'); }, 2800); };
 V['reserva-ok'] = () => { const r = S.get('lastRes'), t = (r.data || {}).t || ''; return `<div class="wrap wait"><div><div class="big-ic ok">${ic.check}</div><div class="eyebrow">Tu mesa te espera</div><h1>¡Reserva exitosa!</h1><p class="muted" style="margin:14px 0">Tu mesa ha sido reservada correctamente${t ? ' y te escribiremos al ' + t : ''}. ¡Te esperamos para vivir una gran experiencia!</p>
   <div class="box"><div class="eyebrow">Reserva #${r.id}</div><div class="det">${resSum(r, r.zn)}</div></div><div class="acts"><a class="btn" href="#/cuenta">Ver mi reserva</a><a class="btn ghost" href="#/inicio">Volver al inicio</a></div>
   <p class="muted" style="margin-top:14px;font-size:12px">Puedes cancelar o modificar tu reserva hasta 2 horas antes. Conserva tu número de reserva para consultar los detalles.</p></div><div>${im('salon', 'Salón')}<h3 style="margin-top:14px">Cada encuentro merece un festejo.</h3></div></div>`; };
@@ -268,7 +327,7 @@ A.login = () => $('#fl').addEventListener('submit', e => {
   e.preventDefault(); const d = e.target.d.value.trim(), t = e.target.t.value.trim();
   if (!/^\d{8}$/.test(d)) return $('#lerr').textContent = 'El DNI debe tener 8 dígitos.';
   if (!/^9\d{8}$/.test(t)) return $('#lerr').textContent = 'El teléfono debe tener 9 dígitos y empezar con 9.';
-  S.set('user', { dni: d, phone: t }); const nx = S.get('next', 'inicio'); S.del('next'); toast('¡Bienvenido a Festejo!'); go(nx);
+  S.set('user', { dni: d, phone: t }); db('clientes', { dni: d, celular: t }, '?on_conflict=dni', 'resolution=ignore-duplicates,return=minimal'); const nx = S.get('next', 'inicio'); S.del('next'); toast('¡Bienvenido a Festejo!'); go(nx);
 });
 
 /* ========= Router ========= */
@@ -283,7 +342,7 @@ function renderHeader() {
 }
 const paint = () => { $('#app').innerHTML = V[cur](); if (A[cur]) A[cur](); renderHeader(); };
 function route() {
-  clearTimeout(timer);
+  clearTimeout(timer); clearInterval(heroT); clearInterval(railT); clearInterval(cdT);
   let h = location.hash.replace(/^#\/?/, '') || 'inicio';
   if (!V[h]) h = 'inicio';
   if (GUARD.includes(h) && !S.get('user')) { S.set('next', h); h = 'login'; }
