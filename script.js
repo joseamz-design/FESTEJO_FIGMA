@@ -23,7 +23,7 @@ const fmtD = d => d.split('-').reverse().join('/');
 const code = p => p + '-' + String(Math.floor(Math.random() * 9000) + 1000);
 
 /* ========= Datos (los nombres de imagen = archivos en /img/NOMBRE.jpg) ========= */
-const CATS = { criollos: 'Platos Criollos', entradas: 'Entradas', bebidas: 'Bebidas', cocteles: 'Cócteles', postres: 'Postres' };
+const CATS = { especiales: 'Menús Especiales', criollos: 'Platos Criollos', entradas: 'Entradas', bebidas: 'Bebidas', cocteles: 'Cócteles', postres: 'Postres' };
 const D = [
   { id: 1, n: 'Lomo Saltado', c: 'criollos', p: 32, i: 'lomo-saltado', d: 'Lomo al wok, papas doradas y arroz de la casa.' },
   { id: 2, n: 'Ají de Gallina', c: 'criollos', p: 25, i: 'aji-de-gallina', d: 'Pollo en crema de ají amarillo, papa, huevo y aceituna.' },
@@ -39,7 +39,10 @@ const D = [
   { id: 12, n: 'Pisco Sour', c: 'cocteles', p: 18, i: 'pisco-sour', d: 'El sabor de nuestra tierra, en cada brindis.' },
   { id: 13, n: 'Pisco Sour de Maracuyá', c: 'cocteles', p: 20, i: 'pisco-maracuya', d: 'Pisco, limón y maracuyá con espuma suave.' },
   { id: 14, n: 'Mazamorra Morada', c: 'postres', p: 12, i: 'mazamorra-morada', d: 'Dulce tradicional de maíz morado y frutas.' },
-  { id: 15, n: 'Suspiro Limeño', c: 'postres', p: 16, i: 'suspiro-limeno', d: 'Manjar blanco con merengue al oporto.' }
+  { id: 15, n: 'Suspiro Limeño', c: 'postres', p: 16, i: 'suspiro-limeno', d: 'Manjar blanco con merengue al oporto.' },
+  { id: 16, n: 'Menú Familiar (4 personas)', c: 'especiales', p: 98, i: 'menu-familiar', d: 'Pollo a la brasa, lomo saltado, ají de gallina, ensalada y chicha morada para compartir.' },
+  { id: 17, n: 'Menú Ejecutivo', c: 'especiales', p: 35, i: 'menu-ejecutivo', d: 'Entrada, plato criollo del día, postre y refresco.' },
+  { id: 18, n: 'Menú Parrillero', c: 'especiales', p: 85, i: 'menu-parrillero', d: 'Anticuchos, lomo al jugo, papas doradas y dos pisco sour.' }
 ];
 const byId = id => D.find(x => x.id == id);
 const PM = { card: 'Tarjeta crédito / débito', yape: 'Yape / Plin', transfer: 'Transferencia bancaria', cash: 'Pago contra entrega' };
@@ -65,7 +68,7 @@ const LOGO = '<span class="orn">◦◈◦</span><strong>FESTEJO</strong><small>�
 const im = (i, a) => `<span class="im"><img src="img/${i}.jpg" alt="${a}" loading="lazy" onerror="this.remove()"></span>`;
 const stepper = (l, c) => `<ol class="steps">${l.map((x, i) => `<li class="${i < c ? 'done' : i === c ? 'on' : ''}"><b>${i < c ? ic.check : i + 1}</b><span>${x}</span></li>`).join('')}</ol>`;
 const STEPS_C = ['Carrito', 'Datos de entrega', 'Pago', 'Confirmación'];
-const STEPS_R = ['Selección de mesa', 'Fecha y hora', 'Confirmación'];
+const STEPS_R = ['Mesa y sillas', 'Fecha y hora', 'Decoración y datos', 'Confirmación'];
 const pc = d => `<article class="pc">${im(d.i, d.n)}<h4>${d.n}</h4><p class="pr">${money(d.p)}</p><button class="btn ghost sm" data-add="${d.id}">Agregar</button></article>`;
 const qty = id => `<span class="qty"><button data-dec="${id}" aria-label="Quitar">−</button><i>${cart()[id]}</i><button data-inc="${id}" aria-label="Agregar">+</button></span>`;
 const sumBox = (its, tot) => `<aside class="box sum"><h3>Resumen del pedido</h3>${its.map(x => `<div class="li">${im(x.i, x.n)}<div><b>${x.n}</b><small>${x.q} unidad${x.q > 1 ? 'es' : ''}</small></div><span>${money(x.p * x.q)}</span></div>`).join('')}
@@ -74,7 +77,7 @@ const sumBox = (its, tot) => `<aside class="box sum"><h3>Resumen del pedido</h3>
 const head = (eb, t, p) => `<div class="wrap ph"><div class="eyebrow">${eb}</div><h1>${t}</h1>${p ? `<p>${p}</p>` : ''}</div>`;
 
 /* ========= Estado de vistas ========= */
-let cur = 'inicio', timer, pcat = 'todos', ccat = 'criollos', cq = '', pm = S.get('pm', 'card'), cal = null;
+let cur = 'inicio', timer, pcat = 'todos', ccat = 'especiales', cq = '', pm = S.get('pm', 'card'), cal = null;
 const R = () => S.get('res', { zone: 'principal' });
 const saveR = o => S.set('res', { ...R(), ...o });
 
@@ -85,10 +88,10 @@ const A = {}; // se ejecutan después de pintar la vista
 V.inicio = () => {
   const rel = [9, 11, 5, 13].map(id => pc(byId(id))).join(''), mas = [10, 8, 14, 15].map(id => pc(byId(id))).join('');
   return `<section class="hero"><div><div class="eyebrow">— El arte de compartir</div><h1>Sabor, Cultura y Tradición Peruana</h1><p>Comida criolla, cocteles y mucho más.</p>
-    <a class="btn" href="#/servicios">RESERVA TU MESA ${ic.arrow}</a><q>Cada encuentro merece un festejo.</q></div>
+    <a class="btn" href="#/servicios">RESERVA TU MESA ${ic.arrow}</a><div class="hs"><span><b>12:00</b>Abierto desde</span><span><b>26</b>Mesas</span><span><b>3</b>Zonas</span></div><q>Cada encuentro merece un festejo.</q></div>
     <div class="im">${im('hero', 'Salón de Festejo').replace('class="im"', 'class="im" style="position:absolute;inset:0"')}<div class="tag"><b>Un lugar para sentirte en casa.</b><small>COCINA PERUANA · CAFÉ · BUENOS MOMENTOS</small></div></div></section>
   <div class="wrap sec"><div class="eyebrow">Sabores para descubrir</div><h2>Ofertas especiales y recomendaciones</h2><p class="muted">Una selección de la casa para disfrutar de nuestra cocina y encontrar nuevos favoritos.</p>
-    <div class="feat">${im('ofertas', 'Plato de la casa')}<div><div class="eyebrow">La recomendación de Festejo</div><h3>El gusto de compartir algo especial.</h3><p class="muted" style="margin-bottom:18px">Platos criollos, un buen brindis y un dulce final. Explora esta selección editorial, con los precios de nuestra carta.</p><a class="btn" href="#/carta">Explorar la carta ${ic.arrow}</a></div></div>
+    <div class="feat">${im('ofertas', 'Plato de la casa')}<div><div class="eyebrow">La recomendación de Festejo</div><h3>El gusto de compartir algo especial.</h3><p class="muted" style="margin-bottom:18px">Platos criollos, un buen brindis y un dulce final. Explora esta selección editorial, con los precios de nuestra carta.</p><a class="btn" href="#/carta">Explorar el menú ${ic.arrow}</a></div></div>
     <div class="cols"><div><h3>Productos relacionados</h3><small class="muted">Aunque no lo creas, también te pueden interesar.</small><div class="grid4" style="grid-template-columns:repeat(2,1fr)">${rel}</div></div>
     <div><h3>También te puede gustar</h3><small class="muted">Otros clientes también compraron.</small><div class="grid4" style="grid-template-columns:repeat(2,1fr)">${mas}</div></div></div></div>
   <div class="wrap sec" style="padding-top:0"><div class="eyebrow">Por qué Festejo</div><h2>Hecho para compartir</h2>
@@ -98,15 +101,9 @@ V.inicio = () => {
   <div class="wrap" style="padding-bottom:56px"><div class="band"><div><small>Visítanos</small><h3>Av. Londres · San Carlos, Huancayo</h3></div><div><small>Horario</small><p>Todos los días<br>12:00 p. m. – 10:00 p. m.</p></div><div><a class="btn" href="#/servicios">Reservar mesa</a> <a class="btn ghost" href="#/contacto">Contacto</a></div></div></div>`;
 };
 
-V.productos = () => {
-  const list = D.filter(d => pcat === 'todos' || d.c === pcat);
-  return `${head('Nuestra selección', 'Productos', 'Todo lo que preparamos en Festejo, a un clic de tu mesa.')}<div class="wrap page"><div class="acts" style="margin:6px 0 18px">${Object.entries({ todos: 'Todos', ...CATS }).map(([k, t]) => `<button class="btn ${pcat === k ? '' : 'ghost'} sm" data-act="pcat:${k}" style="flex:0">${t}</button>`).join('')}</div>
-  <div class="grid4">${list.map(pc).join('')}</div></div>`;
-};
-
 V.nosotros = () => `${head('Nuestra historia', 'Nosotros', 'Un café y restaurante peruano en el corazón de Huancayo.')}<div class="wrap page">
   <div class="split">${im('salon', 'Salón Festejo')}<div><div class="eyebrow">Quiénes somos</div><h2>Cada encuentro merece un festejo</h2><p class="muted" style="margin:12px 0">Festejo nació para que la cocina criolla, el buen café y los cocteles peruanos tengan un lugar donde se disfruten sin prisa. Cocinamos al momento, con ingredientes de nuestra tierra y el cariño de una mesa familiar.</p><p class="muted">Nuestra misión es simple: que cada visita se sienta como volver a casa.</p></div></div>
-  <div class="stats"><div><b>15+</b>platos en carta</div><div><b>3</b>zonas del salón</div><div><b>26</b>mesas</div><div><b>7/7</b>días abiertos</div></div>
+  <div class="stats"><div><b>18+</b>platos y menús</div><div><b>3</b>zonas del salón</div><div><b>26</b>mesas</div><div><b>7/7</b>días abiertos</div></div>
   <div class="three"><div class="box"><h4>Tradición</h4><p class="muted">Recetas que pasan de generación en generación.</p></div><div class="box"><h4>Sabor</h4><p class="muted">Cocina al momento, con insumos frescos.</p></div><div class="box"><h4>Hospitalidad</h4><p class="muted">Un servicio cálido, como en casa.</p></div></div></div>`;
 
 V.contacto = () => `${head('Estamos para ti', 'Contacto', 'Escríbenos para consultas, eventos o celebraciones especiales.')}<div class="wrap page"><div class="cols">
@@ -124,14 +121,14 @@ A.contacto = () => $('#fc').addEventListener('submit', e => {
 });
 
 /* ---- Carta ---- */
-V.carta = () => `<div class="wrap page"><div class="ph chead" style="padding-bottom:0"><div><div class="eyebrow">Cocina peruana · Hecha para compartir</div><h1>Nuestra Carta</h1><p class="muted">El verdadero sabor del Perú, en cada plato.</p></div>
+V.carta = () => `<div class="wrap page"><div class="ph chead" style="padding-bottom:0"><div><div class="eyebrow">Cocina peruana · Hecha para compartir</div><h1>Nuestro Menú</h1><p class="muted">El verdadero sabor del Perú, en cada plato.</p></div>
   <label class="search">${ic.search}<input id="q" placeholder="Buscar un plato" value="${cq}" autocomplete="off"></label></div><div id="cbody"></div></div>`;
 function cartaBody() {
   const u = S.get('user'), n = cnt(), list = D.filter(d => (cq ? d.n.toLowerCase().includes(cq.toLowerCase()) : d.c === ccat));
   const card = d => `<article class="dc">${im(d.i, d.n)}<div><h4>${d.n}</h4><p>${d.d}</p><div class="row"><b>${money(d.p)}</b>${cart()[d.id] ? qty(d.id) : `<button class="btn ghost sm" data-add="${d.id}">+ Agregar</button>`}</div></div></article>`;
   const panel = u && n ? `<aside class="box mini"><h3>Tu Carrito <span class="pill">${n} producto${n > 1 ? 's' : ''}</span></h3>${items().map(x => `<div class="mi"><b>${x.n}</b><b>${money(x.p * x.q)}</b><small>${money(x.p)} por unidad</small>${qty(x.id)}<button class="trash" data-del="${x.id}" aria-label="Eliminar">${ic.trash}</button></div>`).join('')}
     <div class="tr big"><span>Total</span><b>${money(total())}</b></div><a class="btn block" href="#/carrito">Finalizar compra ${ic.arrow}</a></aside>` : '';
-  return `<div class="carta ${panel ? 'cp' : ''}"><div class="side"><small>La carta</small>${Object.entries(CATS).map(([k, t]) => `<button class="${!cq && ccat === k ? 'on' : ''}" data-act="cat:${k}">${t}</button>`).join('')}<q>Tradición que se sirve con cariño.</q></div>
+  return `<div class="carta ${panel ? 'cp' : ''}"><div class="side"><small>El menú</small>${Object.entries(CATS).map(([k, t]) => `<button class="${!cq && ccat === k ? 'on' : ''}" data-act="cat:${k}">${t}</button>`).join('')}<q>Tradición que se sirve con cariño.</q></div>
   <div class="dgrid">${list.map(card).join('') || '<p class="empty">No encontramos ese plato.</p>'}</div>${panel}</div>`;
 }
 A.carta = () => { $('#cbody').innerHTML = cartaBody(); $('#q').addEventListener('input', e => { cq = e.target.value; $('#cbody').innerHTML = cartaBody(); }); };
@@ -186,19 +183,31 @@ V.confirmado = () => { const o = S.get('order'); return `${head('Gracias por ele
   <div class="acts"><a class="btn" href="#/cuenta">Ver mi pedido</a><a class="btn ghost" href="#/inicio">Volver al inicio</a></div></div>${sumBox(o.items, o.total)}</div></div>`; };
 
 /* ---- Reservas ---- */
+const DECO = {
+  flores: ['Flores', [['Sin flores', 0], ['Flores de campo', 30], ['Girasoles', 35], ['Rosas rojas', 55]]],
+  velas: ['Velas', [['Sin velas', 0], ['Velas aromáticas', 20], ['Candelabro rústico', 40], ['Farolitos de luz cálida', 45]]],
+  adornos: ['Adornos', [['Sin adornos', 0], ['Mantel y camino de mesa', 25], ['Globos y letrero de celebración', 50], ['Pétalos y detalle de aniversario', 60]]]
+};
+const decoSel = r => Object.entries(DECO).map(([k, [t, o]]) => [t, o[(r.deco || {})[k] || 0]]).filter(x => x[1][1] > 0);
+const decoTot = r => decoSel(r).reduce((a, x) => a + x[1][1], 0);
+const keepForm = () => { const f = $('#fd'); if (f) saveR({ draft: Object.fromEntries(new FormData(f)) }); };
+
 V.servicios = () => {
-  const r = R(), z = ZDEF[r.zone], u = S.get('user');
-  const mesa = t => { const n = Math.ceil(t.cap / 2), ch = '<i></i>'.repeat(n);
-    return `<button class="mesa ${z.round ? 'round' : ''} ${t.occ ? 'occ' : ''} ${r.table === t.n ? 'sel' : ''}" ${t.occ ? 'disabled' : `data-act="mesa:${t.n}"`} aria-label="Mesa ${t.n}"><span class="ch">${ch}</span><span class="wood"><b>${r.table === t.n ? '✓ ' : ''}Mesa ${t.n}</b><small>${t.cap} personas${t.occ ? ' · Ocupada' : ''}</small></span><span class="ch b">${ch}</span></button>`; };
+  const r = R(), z = ZDEF[r.zone], u = S.get('user'), ch = r.chairs || [];
+  const mesa = t => {
+    const sel = r.table === t.n, rr = t.cap <= 2 ? 30 : t.cap <= 4 ? 38 : 48;
+    const sillas = Array.from({ length: t.cap }, (_, i) => `<button class="chair ${sel && ch.includes(i) ? 'on' : ''}" ${t.occ ? 'disabled' : `data-act="chair:${t.n}.${i}"`} style="transform:rotate(${i * 360 / t.cap}deg) translateY(-${rr + 16}px)" aria-label="Silla ${i + 1} de la mesa ${t.n}"></button>`).join('');
+    return `<div class="mt ${t.occ ? 'occ' : ''} ${sel ? 'sel' : ''}" style="--r:${rr}px">${sillas}<button class="top ${z.round ? 'round' : ''}" ${t.occ ? 'disabled' : `data-act="mesa:${t.n}"`} aria-label="Mesa ${t.n}"><b>${sel ? '✓ ' : ''}${t.n}</b><small>${t.occ ? 'Ocupada' : t.cap + ' pers.'}</small></button></div>`;
+  };
   const sel = r.table && z.t.find(t => t.n === r.table);
-  return `${head('Un lugar para compartir', 'Elige tu mesa', 'Encuentra tu espacio favorito. Selecciona una zona y una mesa para tu próxima visita.')}<div class="wrap page">${stepper(STEPS_R, 0)}<div class="lay wide"><div class="box">
+  return `${head('Un lugar para compartir', 'Elige tu mesa y tus sillas', 'Mira el salón desde arriba, elige una mesa y toca las sillas que usarás.')}<div class="wrap page">${stepper(STEPS_R, 0)}<div class="lay wide"><div class="box">
   <div class="tabs">${Object.entries(ZDEF).map(([k, v]) => `<button class="${r.zone === k ? 'on' : ''}" data-act="zone:${k}"><b>${v.n}</b><small>${v.s}</small></button>`).join('')}</div>
-  <div class="row"><b style="font-size:12px">${z.n} · Plano de mesas</b><small class="muted">Vista esquemática del salón</small></div>
-  <div class="plano"><span class="win"></span>${z.t.map(mesa).join('')}<span class="door">↑ ENTRADA AL SALÓN</span></div>
-  <div class="leg"><span><i></i>Disponible</span><span><i class="o"></i>Ocupada</span><span><i class="s"></i>Seleccionada</span></div></div>
-  <div><div class="box"><h3>${sel ? 'Tu mesa seleccionada' : 'Selecciona una mesa'}</h3>${sel ? `<div class="det"><div class="tr"><span>Mesa</span><b>Mesa ${sel.n}</b></div><div class="tr"><span>Zona</span><b>${z.n}</b></div><div class="tr"><span>Capacidad</span><b>${sel.cap} personas</b></div></div><p class="muted" style="margin-bottom:14px">Una mesa para disfrutar juntos, en nuestro salón.</p>` : '<p class="muted" style="margin:10px 0 14px">Toca una mesa disponible del plano para continuar.</p>'}
+  <div class="row"><b style="font-size:12px">${z.n} · Vista desde arriba</b><small class="muted">Toca la mesa o las sillas</small></div>
+  <div class="plano ${r.zone}"><span class="win"></span><span class="rug"></span><span class="pl" style="left:10px;top:12px"></span><span class="pl" style="right:10px;top:12px"></span><span class="pl" style="left:10px;bottom:10px"></span><span class="pl" style="right:10px;bottom:10px"></span>${z.t.map(mesa).join('')}<span class="door">↑ ENTRADA AL SALÓN</span></div>
+  <div class="leg"><span><i></i>Silla libre</span><span><i class="s"></i>Silla elegida</span><span><i class="o"></i>Ocupada</span></div></div>
+  <div><div class="box"><h3>${sel ? 'Tu mesa seleccionada' : 'Selecciona una mesa'}</h3>${sel ? `<div class="det"><div class="tr"><span>Mesa</span><b>Mesa ${sel.n}</b></div><div class="tr"><span>Zona</span><b>${z.n}</b></div><div class="tr"><span>Sillas a usar</span><b>${ch.length} de ${sel.cap}</b></div></div><p class="muted" style="margin-bottom:14px">Toca una silla del plano para quitarla o ponerla.</p>` : '<p class="muted" style="margin:10px 0 14px">Toca una mesa disponible del plano para continuar.</p>'}
   <button class="btn block" data-act="reservar" ${sel ? '' : 'disabled'}>${u ? 'Continuar con fecha y hora →' : 'REGÍSTRATE'}</button></div>
-  <div style="margin-top:22px"><h3>Reservar es sencillo</h3><ol class="muted" style="padding-left:18px;margin-top:8px"><li>Elige una mesa y su capacidad.</li><li>Selecciona la fecha y un horario.</li><li>Revisa los detalles y reserva.</li></ol></div></div></div></div>`;
+  <div class="box" style="margin-top:16px"><h4>Nuestro salón</h4><p class="muted" style="margin:6px 0 10px">Madera, plantas y luz cálida. Tolerancia de 15 min.</p><div class="chips"><span>WiFi libre</span><span>Cochera</span><span>Sillas de bebé</span><span>Yape / Plin</span></div></div></div></div></div>`;
 };
 
 const calHTML = () => {
@@ -208,18 +217,41 @@ const calHTML = () => {
   for (let d = 1; d <= days; d++) { const k = `${cal.y}-${String(cal.m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`; h += `<button class="day ${r.date === k ? 'on' : ''}" data-act="date:${k}" ${new Date(cal.y, cal.m, d) < now ? 'disabled' : ''}>${d}</button>`; }
   return h + '</div>';
 };
-const resSum = (r, z) => `<div class="tr"><span>Mesa</span><b>Mesa ${r.table}</b></div><div class="tr"><span>Zona</span><b>${z}</b></div><div class="tr"><span>Personas</span><b>${r.cap} personas</b></div><div class="tr"><span>Fecha</span><b>${r.date ? fmtD(r.date) : '—'}</b></div><div class="tr"><span>Hora</span><b>${r.time || '—'}</b></div>`;
+const resSum = (r, z) => `<div class="tr"><span>Mesa</span><b>Mesa ${r.table}</b></div><div class="tr"><span>Zona</span><b>${z}</b></div><div class="tr"><span>Sillas</span><b>${(r.chairs || []).map(i => i + 1).join(', ') || '—'} (${r.cap} pers.)</b></div><div class="tr"><span>Fecha</span><b>${r.date ? fmtD(r.date) : '—'}</b></div><div class="tr"><span>Hora</span><b>${r.time || '—'}</b></div>${decoSel(r).map(([t, [n, p]]) => `<div class="tr"><span>${t}</span><b>${n} · ${money(p)}</b></div>`).join('')}${decoTot(r) ? `<div class="tr"><span>Extras de decoración</span><b>${money(decoTot(r))}</b></div>` : ''}`;
+
 V.fecha = () => {
   const r = R(), z = ZDEF[r.zone].n, dl = r.date ? new Date(r.date + 'T00:00').toLocaleDateString('es-PE', { weekday: 'long' }) : '';
   return `${head('Preparamos tu visita', '¿Cuándo nos encontramos?', `Selecciona la fecha y la hora. Tu Mesa ${r.table}, en la ${z}, sigue seleccionada.`)}<div class="wrap page">${stepper(STEPS_R, 1)}<div class="lay wide"><div><div class="box cols" style="gap:30px"><div><h3>Selecciona la fecha</h3>${calHTML()}<small style="color:var(--gold2)">${r.date ? `Seleccionada: ${dl} ${fmtD(r.date)}` : 'Aún no elegiste una fecha'}</small></div>
   <div><h3>Hora disponible</h3><small class="muted">Horarios para ${r.cap} personas, en la ${z}.</small>${Object.entries(HORAS).map(([k, hs]) => `<p class="eyebrow" style="margin-top:12px">${k}</p><div class="hours">${hs.map(h => `<button class="${r.time === h ? 'on' : ''}" data-act="time:${h}">${h}</button>`).join('')}</div>`).join('')}</div></div>
   <div class="note"><b>Haz tus cambios con tranquilidad</b><br><span class="muted">Puedes cancelar o modificar tu reserva hasta 2 horas antes de la hora seleccionada.</span></div></div>
-  <aside class="box"><h3 style="margin-bottom:12px">Revisa tu reserva</h3><div class="det">${resSum(r, z)}</div><p class="muted" style="margin-bottom:14px">Todo listo para enviar tu solicitud. Verás la confirmación al finalizar.</p><button class="btn block" data-act="book">Reservar ahora</button><a class="btn ghost block" href="#/servicios" style="margin-top:10px">Volver a elegir mesa</a></aside></div></div>`;
+  <aside class="box"><h3 style="margin-bottom:12px">Revisa tu reserva</h3><div class="det">${resSum(r, z)}</div><button class="btn block" data-act="book">Continuar: decoración y datos →</button><a class="btn ghost block" href="#/servicios" style="margin-top:10px">Volver a elegir mesa</a></aside></div></div>`;
 };
+
+V.decoracion = () => {
+  const r = R(), z = ZDEF[r.zone].n, u = S.get('user', {}), d = { d: u.dni || '', t: u.phone || '', ...(r.draft || {}) }, dc = r.deco || {};
+  const grp = ([k, [t, o]]) => `<div class="dgr"><p class="eyebrow">${t}</p><div class="opts">${o.map(([n, p], i) => `<button type="button" class="opt ${(dc[k] || 0) === i ? 'on' : ''}" data-act="deco:${k}:${i}"><b>${n}</b><small>${p ? '+ ' + money(p) : 'Sin costo'}</small></button>`).join('')}</div></div>`;
+  return `${head('Haz tu mesa única', 'Decoración y datos del titular', 'Elige cómo quieres tu mesa y déjanos tus datos para confirmar la reserva.')}<div class="wrap page">${stepper(STEPS_R, 2)}<div class="lay wide"><form id="fd" novalidate><div class="box"><h3 style="margin-bottom:6px">Decora tu mesa</h3><p class="muted" style="margin-bottom:12px">Cada adorno tiene un costo extra que se paga en el local.</p>${Object.entries(DECO).map(grp).join('')}</div>
+  <div class="box" style="margin-top:18px"><h3 style="margin-bottom:14px">Datos del titular</h3>
+  <label class="field">Nombre y apellidos *<input name="n" placeholder="Como figura en tu DNI" value="${d.n || ''}"></label>
+  <div class="g2"><label class="field">DNI *<input name="d" inputmode="numeric" maxlength="8" value="${d.d}"></label><label class="field">Celular / WhatsApp *<input name="t" inputmode="numeric" maxlength="9" value="${d.t}"></label></div>
+  <div class="g2"><label class="field">Teléfono adicional (otra persona o fijo)<input name="t2" inputmode="numeric" maxlength="9" value="${d.t2 || ''}"></label><label class="field">Correo electrónico *<input name="e" type="email" placeholder="tu.correo@ejemplo.com" value="${d.e || ''}"></label></div>
+  <label class="field">Motivo de la visita<select name="o">${['Reunión familiar', 'Cumpleaños', 'Aniversario', 'Cena romántica', 'Negocios', 'Otro'].map(x => `<option ${d.o === x ? 'selected' : ''}>${x}</option>`).join('')}</select></label>
+  <label class="field">Notas, alergias o pedidos especiales (opcional)<textarea name="m" rows="3">${d.m || ''}</textarea></label>
+  <label style="display:flex;gap:8px;align-items:center"><input type="checkbox" name="ok" ${d.ok ? 'checked' : ''}> Acepto la tolerancia de 15 min y los costos extra de decoración.</label><div class="err" id="ferr"></div></div>
+  <div class="acts"><a class="btn ghost" href="#/fecha" style="flex:0 0 auto">← Volver a fecha y hora</a><button class="btn">Confirmar reserva →</button></div></form>
+  <aside class="box"><h3 style="margin-bottom:12px">Tu reserva</h3><div class="det">${resSum(r, z)}</div><small class="muted">La decoración se paga en el local el día de tu visita.</small></aside></div></div>`;
+};
+A.decoracion = () => $('#fd').addEventListener('submit', e => {
+  e.preventDefault(); const f = e.target, v = Object.fromEntries(new FormData(f)); saveR({ draft: v });
+  const err = v.n.trim().length < 5 ? 'Escribe tu nombre y apellidos.' : !/^\d{8}$/.test(v.d) ? 'El DNI debe tener 8 dígitos.' : !/^9\d{8}$/.test(v.t) ? 'El celular debe tener 9 dígitos y empezar con 9.' : (v.t2 && !/^\d{7,9}$/.test(v.t2)) ? 'El teléfono adicional no es válido.' : !/^\S+@\S+\.\S+$/.test(v.e) ? 'Escribe un correo válido.' : !v.ok ? 'Debes aceptar las condiciones.' : '';
+  if (err) return $('#ferr').textContent = err;
+  saveR({ data: v }); go('procesando-reserva');
+});
+
 V['procesando-reserva'] = () => { const r = R(); return wait('', 'Estamos preparando tu encuentro', 'Procesando tu reserva…', 'Por favor, espera un momento mientras revisamos tu selección. Tu reserva todavía no está confirmada.',
   `<div class="eyebrow">Solicitud pendiente</div><div class="det">${resSum(r, ZDEF[r.zone].n)}</div>`, 'Mantén esta pantalla abierta y no envíes otra solicitud.'); };
 A['procesando-reserva'] = () => { timer = setTimeout(() => { const r = R(); S.set('lastRes', { ...r, id: code('FT'), zn: ZDEF[r.zone].n }); S.del('res'); go('reserva-ok'); }, 2800); };
-V['reserva-ok'] = () => { const r = S.get('lastRes'); return `<div class="wrap wait"><div><div class="big-ic ok">${ic.check}</div><div class="eyebrow">Tu mesa te espera</div><h1>¡Reserva exitosa!</h1><p class="muted" style="margin:14px 0">Tu mesa ha sido reservada correctamente. ¡Te esperamos para vivir una gran experiencia!</p>
+V['reserva-ok'] = () => { const r = S.get('lastRes'), t = (r.data || {}).t || ''; return `<div class="wrap wait"><div><div class="big-ic ok">${ic.check}</div><div class="eyebrow">Tu mesa te espera</div><h1>¡Reserva exitosa!</h1><p class="muted" style="margin:14px 0">Tu mesa ha sido reservada correctamente${t ? ' y te escribiremos al ' + t : ''}. ¡Te esperamos para vivir una gran experiencia!</p>
   <div class="box"><div class="eyebrow">Reserva #${r.id}</div><div class="det">${resSum(r, r.zn)}</div></div><div class="acts"><a class="btn" href="#/cuenta">Ver mi reserva</a><a class="btn ghost" href="#/inicio">Volver al inicio</a></div>
   <p class="muted" style="margin-top:14px;font-size:12px">Puedes cancelar o modificar tu reserva hasta 2 horas antes. Conserva tu número de reserva para consultar los detalles.</p></div><div>${im('salon', 'Salón')}<h3 style="margin-top:14px">Cada encuentro merece un festejo.</h3></div></div>`; };
 
@@ -240,14 +272,14 @@ A.login = () => $('#fl').addEventListener('submit', e => {
 });
 
 /* ========= Router ========= */
-const NAV = [['inicio', 'Inicio'], ['productos', 'Productos'], ['nosotros', 'Nosotros'], ['servicios', 'Servicios'], ['carta', 'Menú'], ['contacto', 'Contacto']];
-const GROUP = { carrito: 'carta', entrega: 'carta', pago: 'carta', confirmado: 'carta', fecha: 'servicios', 'reserva-ok': 'servicios' };
-const GUARD = ['carrito', 'entrega', 'pago', 'procesando', 'confirmado', 'fecha', 'procesando-reserva', 'reserva-ok', 'cuenta'];
+const NAV = [['inicio', 'Inicio'], ['nosotros', 'Nosotros'], ['servicios', 'Servicios'], ['carta', 'Menú'], ['contacto', 'Contacto']];
+const GROUP = { carrito: 'carta', entrega: 'carta', pago: 'carta', confirmado: 'carta', fecha: 'servicios', decoracion: 'servicios', 'reserva-ok': 'servicios' };
+const GUARD = ['carrito', 'entrega', 'pago', 'procesando', 'confirmado', 'fecha', 'decoracion', 'procesando-reserva', 'reserva-ok', 'cuenta'];
 
 function renderHeader() {
   const u = S.get('user'), bare = cur.startsWith('procesando'), act = GROUP[cur] || cur;
   $('#hdr').innerHTML = `<div class="wrap hd"><a href="#/inicio" class="logo">${LOGO}</a>${bare ? '' : `<nav>${NAV.map(([k, t]) => `<a href="#/${k}" class="${act === k ? 'on' : ''}">${t}</a>`).join('')}</nav>
-  <div class="hr"><a href="#/${u ? 'cuenta' : 'login'}" class="ib" title="${u ? 'Mi cuenta' : 'Ingresar'}">${ic.user}</a>${u ? `<a href="#/carrito" class="ib bag" title="Carrito">${ic.bag}<em>${cnt()}</em></a>` : ''}</div>`}</div>`;
+  <div class="hr"><a class="btn sm hbtn" href="#/servicios">Reservar</a><a href="#/${u ? 'cuenta' : 'login'}" class="ib" title="${u ? 'Mi cuenta' : 'Ingresar'}">${ic.user}</a>${u ? `<a href="#/carrito" class="ib bag" title="Carrito">${ic.bag}<em>${cnt()}</em></a>` : ''}</div>`}</div>`;
 }
 const paint = () => { $('#app').innerHTML = V[cur](); if (A[cur]) A[cur](); renderHeader(); };
 function route() {
@@ -256,8 +288,9 @@ function route() {
   if (!V[h]) h = 'inicio';
   if (GUARD.includes(h) && !S.get('user')) { S.set('next', h); h = 'login'; }
   if (['carrito', 'entrega', 'pago', 'procesando'].includes(h) && !cnt()) h = h === 'carrito' ? h : 'carrito';
-  if (['fecha', 'procesando-reserva'].includes(h) && !(R().table)) h = 'servicios';
-  if (h === 'procesando-reserva' && !(R().date && R().time)) h = 'fecha';
+  if (['fecha', 'decoracion', 'procesando-reserva'].includes(h) && !(R().table)) h = 'servicios';
+  if (['decoracion', 'procesando-reserva'].includes(h) && !(R().date && R().time)) h = 'fecha';
+  if (h === 'procesando-reserva' && !R().data) h = 'decoracion';
   if (h === 'confirmado' && !S.get('order')) h = 'inicio';
   if (h === 'reserva-ok' && !S.get('lastRes')) h = 'inicio';
   cur = h; document.body.dataset.page = h; paint(); scrollTo(0, 0);
@@ -270,12 +303,14 @@ const ACT = {
   cat: v => { ccat = v; cq = ''; paint(); },
   pm: v => { pm = v; S.set('pm', v); $('#ppanel').innerHTML = payPanel(); document.querySelectorAll('.pm button').forEach(b => b.classList.toggle('on', b.dataset.act === 'pm:' + v)); },
   zone: v => { const r = R(); saveR({ zone: v, table: r.zone === v ? r.table : null }); paint(); },
-  mesa: v => { const z = ZDEF[R().zone], t = z.t.find(x => x.n == v); saveR({ table: t.n, cap: t.cap }); paint(); },
+  mesa: v => { const t = ZDEF[R().zone].t.find(x => x.n == v); saveR({ table: t.n, cap: t.cap, chairs: Array.from({ length: t.cap }, (_, i) => i) }); paint(); },
+  chair: v => { const [n, i] = v.split('.').map(Number), r = R(); if (r.table !== n) return ACT.mesa(String(n)); let ch = r.chairs || []; ch = ch.includes(i) ? ch.filter(x => x !== i) : [...ch, i]; if (!ch.length) return toast('Elige al menos una silla'); saveR({ chairs: ch.sort((a, b) => a - b), cap: ch.length }); paint(); },
+  deco: v => { keepForm(); const [k, i] = v.split(':'), r = R(); saveR({ deco: { ...(r.deco || {}), [k]: +i } }); paint(); },
   reservar: () => { if (!S.get('user')) { S.set('next', 'servicios'); toast('Ingresa tus datos para reservar'); return go('login'); } go('fecha'); },
   cal: v => { cal.m += +v; if (cal.m > 11) { cal.m = 0; cal.y++; } if (cal.m < 0) { cal.m = 11; cal.y--; } paint(); },
   date: v => { saveR({ date: v }); paint(); },
   time: v => { saveR({ time: v }); paint(); },
-  book: () => { const r = R(); if (!r.date || !r.time) return toast('Elige una fecha y una hora'); go('procesando-reserva'); },
+  book: () => { const r = R(); if (!r.date || !r.time) return toast('Elige una fecha y una hora'); go('decoracion'); },
   logout: () => { S.del('user'); toast('Sesión cerrada'); go('inicio'); },
   pay: () => {
     if (pm === 'card') {
@@ -300,7 +335,7 @@ document.addEventListener('input', e => {
   const t = e.target;
   if (t.id === 'cc') t.value = t.value.replace(/\D/g, '').slice(0, 16).replace(/(.{4})/g, '$1 ').trim();
   if (t.id === 'cx') t.value = t.value.replace(/[^\d]/g, '').slice(0, 4).replace(/^(\d{2})(\d)/, '$1/$2');
-  if (t.name === 'd' || t.name === 't' || t.id === 'cv') t.value = t.value.replace(/\D/g, '');
+  if (t.name === 'd' || t.name === 't' || t.name === 't2' || t.id === 'cv') t.value = t.value.replace(/\D/g, '');
 });
 window.addEventListener('hashchange', route);
 route();
