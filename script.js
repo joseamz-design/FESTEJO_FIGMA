@@ -91,7 +91,15 @@ const setQ = (id, q) => { const c = cart(); q > 0 ? c[id] = q : delete c[id]; S.
 
 /* ========= Componentes ========= */
 const LOGO = '<span class="orn">◦◈◦</span><strong>FESTEJO</strong><small>— CAFÉ · RESTAURANTE —</small>';
-const im = (i, a) => `<span class="im"><img src="img/${i}.jpg" alt="${a}" loading="lazy" onerror="this.remove()"></span>`;
+/* Imágenes: prueba varias extensiones (jpg, jpeg, png, webp) y, si no existe, muestra el nombre del plato */
+const EXT = ['jpg', 'jpeg', 'png', 'webp', 'JPG', 'JPEG', 'PNG', 'WEBP'];
+window.imgErr = el => {
+  const k = +(el.dataset.k || 0) + 1;
+  if (k < EXT.length) { el.dataset.k = k; el.src = `img/${el.dataset.n}.${EXT[k]}`; }
+  else { console.warn('Falta la imagen: img/' + el.dataset.n + '.jpg'); el.remove(); }
+};
+const im = (i, a) => `<span class="im"><b class="ph">${a}</b><img src="img/${i}.jpg" data-n="${i}" alt="${a}" loading="lazy" onerror="imgErr(this)"></span>`;
+document.head.insertAdjacentHTML('beforeend', '<style>span.im{position:relative}span.im img{position:relative;z-index:1}span.im .ph{position:absolute;inset:0;display:grid;place-items:center;padding:8px;text-align:center;font:italic 500 18px var(--serif);color:rgba(244,233,216,.75)}.li .ph,.mq .ph,.ci .ph{display:none}</style>');
 const stepper = (l, c) => `<ol class="steps">${l.map((x, i) => `<li class="${i < c ? 'done' : i === c ? 'on' : ''}"><b>${i < c ? ic.check : i + 1}</b><span>${x}</span></li>`).join('')}</ol>`;
 const STEPS_C = ['Carrito', 'Datos de entrega', 'Pago', 'Confirmación'];
 const STEPS_R = ['Mesa y sillas', 'Fecha y hora', 'Decoración y datos', 'Confirmación'];
@@ -127,7 +135,7 @@ V.inicio = () => {
   return `<section class="hero"><div><div id="hx"><div class="eyebrow" id="hE">${h0.e}</div><h1 id="hT">${h0.t}</h1><p id="hP">${h0.p}</p></div>
     <div class="acts" style="max-width:420px"><a class="btn" href="#/servicios">RESERVA TU MESA ${ic.arrow}</a><a class="btn ghost" href="#/carta">Ver el menú</a></div>
     <div class="hs"><span><b>12:00</b>Abierto desde</span><span><b>26</b>Mesas</span><span><b>3</b>Zonas</span></div></div>
-    <div class="im">${HERO.map((h, i) => `<img class="sl ${i ? '' : 'on'}" data-i="${i}" src="img/${byId(h.id).i}.jpg" alt="${byId(h.id).n}" onerror="this.remove()">`).join('')}
+    <div class="im">${HERO.map((h, i) => `<img class="sl ${i ? '' : 'on'}" data-i="${i}" data-n="${byId(h.id).i}" src="img/${byId(h.id).i}.jpg" alt="${byId(h.id).n}" onerror="imgErr(this)">`).join('')}
       <div class="tag"><small>PLATO DESTACADO</small><b id="hN">${d0.n}</b><small id="hS">${money(d0.p)}</small></div><div class="dots">${HERO.map((_, i) => `<button class="dot ${i ? '' : 'on'}" data-i="${i}" aria-label="Ver ${i + 1}"></button>`).join('')}</div></div></section>
   <div class="wrap sec rv"><div class="row flashh"><div><div class="eyebrow">⚡ Precios flash</div><h2>Ofertas que se van volando</h2><p class="muted">Precios especiales solo por hoy en platos seleccionados.</p></div><div class="cdw"><small>Termina en</small><b id="cd">--:--:--</b></div></div><div class="rail">${flash}</div></div>
   <div class="wrap sec rv" style="padding-top:8px"><div class="eyebrow">Para compartir</div><h2>Menús especiales</h2><p class="muted">Combos pensados para la familia, los amigos o un almuerzo rápido.</p><div class="three">${[16, 17, 18].map(id => sp(byId(id))).join('')}</div></div>
